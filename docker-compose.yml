@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15.1
+    container_name: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-development}'"]
+    ports:
+      - 5432:5432
+    networks:
+      - backend
+    volumes:
+      - postgresdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-development}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:6.17
+    container_name: pgadmin
+    ports:
+      - 5050:80
+    networks:
+      - backend
+    volumes:
+      - pgadmindata:/var/lib/pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pg@ad.min
+      PGADMIN_DEFAULT_PASSWORD: pgadmin
+    restart: unless-stopped
+
+  authentication-service:
+    image: authentication-service:0.1.0
+    container_name: authentication-service
+    build:
+      context: authentication-service
+    ports:
+      - 5000:5000
+    networks:
+      - backend
+      - frontend
+    volumes:
+      - authentication-service/:/opt
+    environment:
+      SERVICE_ENV: ${SERVICE_ENV:-dev}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  backend: {}
+  frontend: {}
+
+volumes:
+  postgresdata:
+    driver: local
+  pgadmindata:
+    driver: local
