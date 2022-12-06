@@ -1,8 +1,7 @@
 [submodule "authentication-service"]
 	path = authentication-service
-    utl = ../authentication-service
-	url = ../authentication-service/
+    url = ../authentication-service/
 
 [submodule "frontend-service"]
 	path = frontend-service
-	url = ../frontend-service/
+    url = ../frontend-service/
