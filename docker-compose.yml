@@ -12,7 +12,7 @@ services:
     networks:
       - frontend
     volumes:
-      - ./frontend-service:/opt
+      - ./frontend-service/src:/opt/src
     restart: unless-stopped
 
   authentication-service:
@@ -26,38 +26,48 @@ services:
       - backend
       - frontend
     volumes:
-      - ./authentication-service:/opt
+      - ./authentication-service/app:/opt/app
+      - ./authentication-service/config:/opt/config
     environment:
       SERVICE_ENV: ${SERVICE_ENV:-dev}
       POSTGRES_HOST: postgres
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-development}
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
 
-  pgadmin:
-    image: dpage/pgadmin4:6.17
-    container_name: pgadmin
+  discussion-service:
+    image: discussion-service:0.1.0
+    container_name: discussion-service
+    build:
+      context: ./discussion-service
     ports:
-      - 5050:5050
+      - 5030:5030
     networks:
       - backend
+      - frontend
     volumes:
-      - pgadmindata:/var/lib/pgadmin
+      - ./discussion-service/app:/opt/app
+      - ./discussion-service/config:/opt/config
     environment:
-      PGADMIN_DEFAULT_EMAIL: pg@ad.min
-      PGADMIN_DEFAULT_PASSWORD: pgadmin
-      PGADMIN_LISTEN_PORT: 5050
+      SERVICE_ENV: ${SERVICE_ENV:-dev}
+      ELASTIC_HOST: elasticsearch
+      ELASTIC_PORT: 9200
+      AUTHEN_HOST: authentication-service
+      AUTHEN_PORT: 5000
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:
     image: postgres:15.1
     container_name: postgres
     healthcheck:
-      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-development}'"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-development}"]
     ports:
       - 5432:5432
     networks:
@@ -66,9 +76,45 @@ services:
       - postgresdata:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-development}
       POSTGRES_HOST_AUTH_METHOD: trust
+    restart: unless-stopped
+
+  elasticsearch:
+    image: elasticsearch:8.5.2
+    container_name: elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
+    ports:
+      - 9200:9200
+    networks:
+      - backend
+    volumes:
+      - elasticsearchdata:/usr/share/elasticsearch/data
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      bootstrap.memory_lock: "true"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: unless-stopped
+
+  kibana:
+    image: kibana:8.5.2
+    container_name: kibana
+    ports:
+      - 5601:5601
+    networks:
+      - backend
+    volumes:
+      - kibanadata:/usr/share/kibana/data
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
     restart: unless-stopped
 
 networks:
@@ -78,5 +124,7 @@ networks:
 volumes:
   postgresdata:
     driver: local
-  pgadmindata:
+  elasticsearchdata:
+    driver: local
+  kibanadata:
     driver: local
