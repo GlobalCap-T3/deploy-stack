@@ -1,11 +1,14 @@
 [submodule "frontend-service"]
 	path = frontend-service
     url = ../frontend-service/
+    shallow = true
 
 [submodule "authentication-service"]
 	path = authentication-service
     url = ../authentication-service/
+    shallow = true
 
 [submodule "discussion-service"]
 	path = discussion-service
-	url = ../discussion-service/
+    url = ../discussion-service/
+    shallow = true

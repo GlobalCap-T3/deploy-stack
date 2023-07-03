@@ -105,6 +105,8 @@ services:
 
   kibana:
     image: kibana:8.5.2
+    profiles:
+      - gui
     container_name: kibana
     ports:
       - 5601:5601
